@@ -1,5 +1,11 @@
 # naal
-Neuromorphic Architecture Abstraction Layer
+- Neuromorphic Architecture Abstraction Layer
+- Especially for Contstrained Hardware such as IoT device
+
+## Hardware To be Supported
+- ETRI Board
+- ABR FPGA Board
+- Intel Loihi
 
 ## How to Contribute?
 - Feel free to create issues/pull-requests if you have any issues.
