@@ -4,12 +4,12 @@ ip = 192.168.1.28
 
 # # Example PYNQ FPGA board configuration
 [pynq]
-ip = 192.168.1.160
+ip = 192.168.1.65
 ssh_port = 22
 ssh_user = xilinx
 ssh_pwd = xilinx
 # # Refer to the online documentation for SSH key configuration options
-remote_script = /opt/NAAL-pynq/NAAL_pynq/single_pes_net.py
-id_script = /opt/NAAL-pynq/NAAL_pynq/id_script.py
-remote_tmp = /opt/NAAL-pynq/params
+remote_script = /opt/naal/NAAL-fpga/NAAL_fpga/single_pes_net.py
+id_script = /opt/naal/NAAL-fpga/NAAL_fpga/id_script.py
+remote_tmp = /opt/naal/NAAL-fpga/params
 udp_port = 0

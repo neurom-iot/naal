@@ -1,0 +1,9 @@
+For more information see the documentation at:
+https://www.nengo.ai/nengo-pynq/usage.html#updating-bitstreams
+
+
+The bitstreams and tcl files in this directory must be named as follows:
+
+RectifiedLinear       : pes_relu_rate.bit, pes_relu_rate.tcl
+SpikingRectifiedLinear: pes_relu_spiking.bit, pes_relu_spiking.tcl
+DNA Extractor         : dna_extractor.bit, dna_extractor.tcl
