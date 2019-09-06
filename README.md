@@ -1,4 +1,4 @@
-# naal
+# NAAL(Neuromorphic Architecture Abstraction Layer)
 - Neuromorphic Architecture Abstraction Layer
 - Especially for Contstrained Hardware such as IoT device
 
