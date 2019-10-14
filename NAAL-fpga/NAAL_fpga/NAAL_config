@@ -1,0 +1,13 @@
+#  host (PC) configuration
+ [host]
+ ip = 192.168.1.30
+ [pynq]
+ ip = 192.168.1.160
+ ssh_port = 22
+ ssh_user = xilinx
+ ssh_pwd = xilinx
+ # Refer to the online documentation for SSH key configuration options
+ test_script = /opt/NAAL-pynq/NAAL_pynq/test2.py
+ NAAL_script =/opt/NAAL-pynq/NAAL_pynq/NAAL_pes.py
+ remote_tmp = /opt/NAAL-pynq/params
+ tcp_port = 8585
