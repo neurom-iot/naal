@@ -14,5 +14,5 @@
 ## Contributors
 - [Junyoung Heo](https://github.com/jyheo)
 - [Bongjae Kim](https://sites.google.com/view/sunmmon-ssrlab/)
-- [Kicheol Park]
-- [Yena Lee]
+- [Kicheol Park](http://oslab.ssu.ac.kr/main/)
+- [Yena Lee](http://oslab.ssu.ac.kr/main/)
