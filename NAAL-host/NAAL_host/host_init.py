@@ -1,211 +1,188 @@
-from __future__ import absolute_import
-
+import sockets
 import socket
-import sys
+import os
 import threading
+import paramiko
 import numpy as np
+import config_FPGA
+import npzFile
+import random
 
 
 
-class ConnectionTimeout(RuntimeError):
-    pass
+class host_init(object):
+ 
+    def __init__(self, fpga_name, n_neurons, dimensions, learning_rate, socket_args={}):
+        self.config =config_FPGA.Is_fpgaboard(fpga_name)
+        self.fpga_name=fpga_name      
+        self.tcp_port =int(config_FPGA.config_parser(self.fpga_name, 'tcp_port'))
+        self.tcp_init= socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.tcp_init.bind((config_FPGA.config_parser('host', 'ip'),8585))
+        self.tcp_init.listen(1)
+        print("command tcp listens ....")
 
+        self.ssh_client = paramiko.SSHClient()
+        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        self.ssh_info_str = ''
+        self.ssh_lock = False
+        self.fpga_name = fpga_name
+        self.arg_data_path = os.curdir
+        self.arg_data_file = ''
 
-class _UDPSocket(object):
-    def __init__(self, addr, dims, byte_order, timeout=None):
-        self.addr = addr
-        self.dims = dims
-        if byte_order == "little":
-            byte_order = "<"
-        elif byte_order == "big":
-            byte_order = ">"
-        if byte_order not in "<>=":
-            raise RuntimeError("Must be one of '<', '>', '=', 'little', "
-                               "'big'.", attr="byte_order")
-        self.byte_order = byte_order
-        if np.isscalar(timeout):
-            self.timeout = (timeout, timeout)
-        else:
-            self.timeout = timeout
+        self.in_dimensions = dimensions
 
-        self._buffer = np.empty(dims + 1, dtype="%sf8" % byte_order)
-        self._buffer[0] = np.nan
-        self._socket = None
+        self.neuron_map={
+            'RectifiedLinear','SpikingRectifiedLinear'
+            }
 
-    @property
-    def t(self):
-        return self._buffer[0]
-
-    @property
-    def x(self):
-        return self._buffer[1:]
-
-    @property
-    def closed(self):
-        return self._socket is None
-
-    def open(self):
-        self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        if sys.platform.startswith('bsd') or sys.platform.startswith('darwin'):
-            self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        else:
-            self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-    def bind(self):
-        self._socket.bind(self.addr)
-
-    def recv(self, timeout):
-        self._socket.settimeout(timeout)
-        self._socket.recv_into(self._buffer.data)
+        self.learning_rate =learning_rate;
+        self.udp_port = int(np.random.uniform(low=20000, high=65535))
         
+        socket_kwargs = dict(socket_args)
+        socket_kwargs.setdefault('recv_timeout', 0.1)
+        
+        self.udp_socket = sockets.UDPsendreceive_socket(
+            listen_addr=(config_FPGA.config_parser('host', 'ip'), self.udp_port),
+            remote_addr=(config_FPGA.config_parser(fpga_name, 'ip'), self.udp_port),**socket_kwargs, ignore_timestamp=True)
+        
+    @property
+    def local_data_filepath(self):
+        return os.path.join(self.arg_data_path, self.arg_data_file)  
+    
+    @property
+    def ssh_command(self):
+        ssh_str = \
+            ('python ' + config_FPGA.config_parser(self.fpga_name, 'NAAL_script') +
+             ' --host_ip="%s"' % config_FPGA.config_parser('host', 'ip')
+           + ' --remote_ip="%s"' % config_FPGA.config_parser(self.fpga_name, 'ip')
+          + ' --udp_port=%i' % self.udp_port 
+          +' --tcp_port=%i' % self.tcp_port
+          + ' --arg_data_file="%s/%s"' %
+             (config_FPGA.config_parser(self.fpga_name, 'NAAL_tmp'),
+             self.arg_data_file) + '\n')
+        return ssh_str
 
-    def send(self, t, x):
-        self._buffer[0] = t
-        self._buffer[1:] = x
-        print("x size  "+str(len(x)))
-        self._socket.sendto(self._buffer.tobytes(), self.addr)
-   
-
-    def close(self):
-        if not self.closed:
-            self._socket.close()
-            self._socket = None
+    def connect_thread_function(self,command):
+        
+        remote_ip = self.config['ip'] 
+        ssh_port = self.config['ssh_port']
+        ssh_user = self.config['ssh_user']
+        ssh_pwd = self.config['ssh_pwd']
+        self.ssh_client.connect(remote_ip, port=ssh_port,
+        username=ssh_user, password=ssh_pwd)
 
 
-class SocketStep(object):
 
-
-    def __init__(self, dt, send=None, recv=None,
-                 remote_dt=None, connection_timeout=None):
-        self.send_socket = send
-        self.recv_socket = recv
-        self.remote_dt = remote_dt
-        self.connection_timeout = connection_timeout
-
-        self.dt = dt
-        if remote_dt is None:
-            remote_dt = dt
-        # Cannot run faster than local dt
-        self.remote_dt = max(remote_dt, dt)
-
-        # State used by the step function
-        self.value = np.zeros(0 if self.recv_socket is None
-                              else self.recv_socket.dims)
-
-    def __call__(self, t, x=None):
-
-        if t <= 0.:
-            return self.value
-
-        if self.send_socket is not None:
-            assert x is not None, "A sender must receive input"
-            self.send(t, x)
-        if self.recv_socket is not None:
-            self.recv(t)
-        return self.value
-
-    def __del__(self):
-        self.close()
-
-    def close(self):
-        if self.send_socket is not None:
-            self.send_socket.close()
-        if self.recv_socket is not None:
-            self.recv_socket.close()
-
-    def recv(self, t):
-        if np.isnan(self.recv_socket.t):
-            try:
-
-                self.recv_socket.recv(self.connection_timeout)
-            except socket.timeout:
-                raise ConnectionTimeout(
-                    "Did not receive initial packet within connection "
-                    "timeout.")
-            self._update_value()
-
-        while self.recv_socket.t < t - self.remote_dt / 2.:
-            self.recv_socket.recv(self.recv_socket.timeout)
-
-        if self.recv_socket.t < t + self.remote_dt / 2.:
-            self._update_value()
-
-    def _update_value(self):
-        self.value = np.array(self.recv_socket.x)
-    # t dt , x, input dimension
-    #다음 패킷을 보낼때가 안되었으면 보내지않음 마지막 보낸시간 +remote_dt
-    def send(self, t, x):
-        if (np.isnan(self.send_socket.t) or
-                (t + self.dt / 2.) >= (self.send_socket.t + self.remote_dt)):
-            self.send_socket.send(t, x)
+        if command is "connect":
+            send_str =self.ssh_command
         else :
-            print ("ok")
+            send_str=command
+
+        if ssh_pwd is not None:
+            self.ssh_client.connect(remote_ip, port=ssh_port,
+                                    username=ssh_user, password=ssh_pwd)
+        else:
+            self.ssh_client.connect(remote_ip, port=ssh_port,
+                                    username=ssh_user)
 
 
-class UDPSendReceiveSocket(object):
 
-    def __init__(
-            self, listen_addr, remote_addr, remote_dt=None,
-            connection_timeout=300., recv_timeout=0.1, byte_order='='):
-        super(UDPSendReceiveSocket, self).__init__()
-        self.listen_addr = listen_addr
-        self.remote_addr = remote_addr
-        self.remote_dt = remote_dt
-        self.connection_timeout = connection_timeout
-        self.recv_timeout = recv_timeout
-        self.byte_order = byte_order
-        print("udpsendrecv init")
-
-    def make_step(self, input_dimensions, output_dimensions, dt):
-        recv = _UDPSocket(
-            self.listen_addr, output_dimensions, self.byte_order,
-            timeout=self.recv_timeout)
-        recv.open()
-        recv.bind()
-        send = _UDPSocket(self.remote_addr, input_dimensions, self.byte_order)
-        send.open()
-        return SocketStep(
-            dt=dt,
-            send=send, recv=recv,
-            remote_dt=self.remote_dt,
-            connection_timeout=self.connection_timeout)
+        print("send command ");
+        print("<%s> Sending cmd to fpga board: \n%s" % (self.config['ip'],send_str), flush=True)
 
 
-class TCPcommandSocket(object):
-        def __init__(self,local_addr, remote_addr,remote_port,connection_timeout=300.):
-            self.local_addr =local_addr
-            self.remote_addr = remote_addr
-            self.remote_port = remote_port
-            self.connection_timeout = connection_timeout
+        remote_data_filepath = \
+            '%s/%s' % (config_FPGA.config_parser(self.fpga_name, 'NAAL_tmp'),
+                       self.arg_data_file)
+
+        print("remote_data_file path"+remote_data_filepath)
+
+        if not os.path.exists(self.local_data_filepath):
+            print("none npz file exit")
+            exit()
+        print("local data"+self.local_data_filepath)
+        ssh_channel = self.ssh_client.invoke_shell()
+        if ssh_user != 'root':
+            print('<%s> Script to be run with sudo. Sudoing.' %
+                  remote_ip, flush=True)
+            ssh_channel.send('sudo su\n')
+
+
+        ssh_channel.send(send_str)
+
+
+        got_error = 0
+        error_strs = []
+
+        got_error = 0
+        error_strs = []
+
+
+        while True:
+            data = ssh_channel.recv(256)
+            if not data:
+
+                ssh_channel.close()
+                break
+
+            self.ssh_output_string(data)
+            info_str_list = self.ssh_info_str.split('\n')
+            for info_str in info_str_list[:-1]:
+                if info_str.startswith('Killed'):
+                    print('<%s> ENCOUNTERED ERROR!' % remote_ip, flush=True)
+                    got_error = 2
+
+                if info_str.startswith('Traceback'):
+                    print('<%s> ENCOUNTERED ERROR!' % remote_ip, flush=True)
+                    got_error = 1
+                elif got_error > 0 and info_str[0] != ' ':
+                    got_error = 2
+
+                if got_error > 0:
+
+                    error_strs.append(info_str)
+                else:
+                    print('<%s> %s' % (remote_ip, info_str), flush=True)
+            self.ssh_info_str = info_str_list[-1]
+
+
+            if got_error == 2:
+                ssh_channel.close()
+                raise RuntimeError(
+                    'Received the following error on the remote side <%s>:\n%s'
+                    % (remote_ip, '\n'.join(error_strs)))
 
         
-        def connect_host(self):
-            print("tcp connect");
-   
-            connect_thread = threading.Thread(target=self.connect_thread_function,args=())
-            connect_thread.start()
 
+    def connect(self):
+        print("<%s> Open SSH connection" %
+              self.config['ip'], flush=True)
+        command=0x00 # connect
+        connect_thread = threading.Thread(target=self.connect_thread_function,
+                                          args=("connect",))
+        connect_thread.start()
 
-        def connect_thread_function(self):
-            self.send_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.send_sock.connect((self.remote_addr, self.remote_port))
-            self.send_sock.send(("<"+self.local_addr+"> "+("tcpconnection")).encode("utf-8"))
+    def ssh_output_string(self, data):
+        str_data = data.decode('latin1').replace('\r\n', '\r')
+        str_data = str_data.replace('\r\r', '\r')
+        str_data = str_data.replace('\r', '\n')
+        self.ssh_info_str += str_data
 
-            while True :
-                data=  self.send_sock.recv(1024)
-                if not data :
-                    pass
-                else :
-                    data=str(data)
-                    print(data)
+    def build_pes_network(self,npz_filename):
+        self.npz_filename=npz_filename
+        self.arg_data_file =npz_filename
 
-        def CleanUP(self):
-            self.send_sock.close()
+    def command_socketstep_init(self):
+        client_socket,addr = self.tcp_init.accept()
+        self.tcp_send_sock= client_socket
+        data= client_socket.recv(1024)
+        print(data)
+        data=str(data)
+        if data.find("connect"):
+            print("tcp initialization success")
+        else :
+            print("tcp initialization failure")
+            exit()
 
-            
-
-
-
-        
-
-            
+    def send_command(self,command):
+        self.tcp_send_sock.send((command).encode("utf-8"))
