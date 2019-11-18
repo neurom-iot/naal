@@ -1,3 +1,4 @@
+  
 import os
 import sys
 
@@ -8,27 +9,23 @@ import numpy as np
 
 configfile_name ="NAAL_config"
 
+
 logger = logging.getLogger(__name__)            
 
 if sys.platform.startswith('win'):
-    config_dir = os.path.expanduser(os.path.join("~", ".NAAL_fpga"))
+    config_dir = os.path.expanduser(os.path.join("~", ".NAAL_FPGA"))
 else:
-    config_dir = os.path.expanduser(os.path.join("~", ".config", "NAAL_fpga"))
+    config_dir = os.path.expanduser(os.path.join("~", ".NAAL_FPGA", "NAAL_FPGA"))
 
 install_dir = os.path.abspath(
     os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
-naal_dir = os.path.abspath(
+NAAL_dir = os.path.abspath(
     os.path.join(os.path.dirname(__file__), os.pardir))
 examples_dir = os.path.join(install_dir, "examples")
 
-#fpga_config = \
-#    {'NAAL': os.path.join(nengo_dir, 'data', configfile_name),
-#     'system': os.path.join(install_dir, 'fpga_config'),
-#     'user': os.path.join(config_dir, "fpga_config"),
-#     'project': os.path.abspath(os.path.join(os.curdir, 'fpga_config'))}
-     
+
 fpga_config = \
-    {'NAAL': os.path.join(nengo_dir, 'data', configfile_name),
+    {'NAAL': os.path.join(NAAL_dir, 'data', configfile_name),
      'system': os.path.join(install_dir, configfile_name),
      'user': os.path.join(config_dir, "fpga_config"),
      'project': os.path.abspath(os.path.join(os.curdir, configfile_name))}
@@ -40,17 +37,9 @@ FPGA_CONFIG_FILES = [fpga_config['NAAL'],
                      fpga_config['project']]
 
 
-#config = configparser.ConfigParser()
-##os.chdir(FPGA_CONFIG_FILES[3])
-#config.read(FPGA_CONFIG_FILES[3])
-#try :
-#    host_config = config['host']
-#except Exception as ex:
-#    print('config_FPGA config error',ex)
-#    exit()
 
 
-def Is_FPGABOAD(fgpaboad_name):
+def Is_fpgaboard(fgpaboad_name):
     try :
 
         config = configparser.ConfigParser()
@@ -71,3 +60,10 @@ def config_parser(key,value):
         print('config_FPGA config error',ex)
         exit()
     return key_config[value]
+
+
+    
+
+
+
+
