@@ -63,7 +63,8 @@ class host_init(object):
         return ssh_str
 
     def connect_thread_function(self,command):
-        
+#        test =self.config['ssh_user']
+#        print(test)
         remote_ip = self.config['ip'] 
         ssh_port = self.config['ssh_port']
         ssh_user = self.config['ssh_user']
@@ -71,9 +72,9 @@ class host_init(object):
         self.ssh_client.connect(remote_ip, port=ssh_port,
         username=ssh_user, password=ssh_pwd)
 
-
-
-        if command is "connect":
+                                        
+        #리눅스에서 해당 명령어 안됨 수정요망 if문이안됨
+        if command is "connect":         
             send_str =self.ssh_command
         else :
             send_str=command
