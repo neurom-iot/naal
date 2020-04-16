@@ -253,16 +253,8 @@ class TCPcommandSocket(object):
                 if not data :
                     pass
                 else :
-                    data=str(data)
-                    print("board status :"+data)
+                    self.tcpdata=str(data)
 
         def CleanUP(self):
             self.send_sock.close()
-
-            
-
-
-
-        
-
             
