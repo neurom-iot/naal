@@ -1,7 +1,7 @@
 from __future__ import print_function
 import os
 import argparse
-
+import atexit
 import os
 import argparse
 import socket
@@ -9,6 +9,7 @@ from pes_driver import PESDriver
 from utils.paths import params_path
 from NAAL_step import naal_socket
 from NAAL_step import NAAL_UDPnetwork
+import time
 
 def cleanup(fpga_driver, socket_step):
     # Terminate the fpga driver
@@ -57,28 +58,32 @@ print("remote_addr = "+args.host_ip)
 print("listen_addr = "+args.remote_ip)
 remote_addr=(args.host_ip, args.udp_port)
 listen_addr=(args.remote_ip, args.udp_port)
-#a=NAAL_UDPnetwork(remote_addr,listen_addr,196,10)
+
+atexit.register(cleanup, fpga_driver)
 curr_t = 0
 dt = fpga_driver.dt
+
+
+
+
 print("dt value = "+str(dt))
 a=NAAL_UDPnetwork(remote_addr,listen_addr,args.in_dimensions,args.out_dimensions)
+fpga_driver.update_input_error_values(a.recv.vector)
+output_value=fpga_driver.step()
 while not fpga_driver.stopped:
     recv_data=a.step_call_recv(curr_t)
-    print("recv_Data ==")
-    print(recv_data)
     if recv_data[0] == 3:
         continue
     elif recv_data[0] == 4 :
         fpga_driver.stopped= True
 
     print("recv_data[1:] =")
-    print(recv_data[2:])
+    print(recv_data[1:])
     fpga_driver.update_input_error_values(recv_data[2:])
     output_value=fpga_driver.step()
     print("output_value")
     print(output_value)
     a.step_call_send(curr_t,output_value)
-
     curr_t += dt
 
     
