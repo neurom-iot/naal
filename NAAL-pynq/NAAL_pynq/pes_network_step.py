@@ -11,12 +11,9 @@ from NAAL_step import naal_socket
 from NAAL_step import NAAL_UDPnetwork
 import time
 
-def cleanup(fpga_driver, socket_step):
+def cleanup(fpga_driver):
     # Terminate the fpga driver
     fpga_driver.terminate()
-
-    # Close and cleanup the UDP socket
-    socket_step.close()
 print("NAAL_FPGA board start")
 
 parser = argparse.ArgumentParser(
@@ -66,10 +63,14 @@ dt = fpga_driver.dt
 
 
 
+
 print("dt value = "+str(dt))
 a=NAAL_UDPnetwork(remote_addr,listen_addr,args.in_dimensions,args.out_dimensions)
 fpga_driver.update_input_error_values(a.recv.vector)
 output_value=fpga_driver.step()
+time.sleep(2)
+
+a.step_call_send(curr_t,output_value)
 while not fpga_driver.stopped:
     recv_data=a.step_call_recv(curr_t)
     if recv_data[0] == 3:
