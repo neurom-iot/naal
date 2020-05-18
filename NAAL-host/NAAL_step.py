@@ -7,12 +7,14 @@ import numpy as np
 from enum import Enum
 import time
 import config_FPGA
+
+
 class board_command(Enum):
     INIT=0
     START=1
-    PROCEEDING=2
-    PAUSE=3
-    STOP=4
+    PAUSE=2
+    STOP=3
+    NONE=4
 class socket_type(Enum):
     SEND=0
     RECV=1
@@ -44,6 +46,9 @@ class naal_socket(object):
     @property
     def dt(self):
         return self.message[1]
+    def set_dt(self,dt):
+        self.message[1]=dt
+
     @property
     def closed(self):
         return self._socket is None
@@ -61,19 +66,61 @@ class naal_socket(object):
     def recv(self):
         self._socket.recv_into(self.message.data)
 
-    def send(self,dt, vector_data,command=board_command.PROCEEDING):
+    def send(self,dt, vector_data,command=board_command.START):
 
         self.message[0] =  command.value
         self.message[1] = dt
         self.message[2:] = vector_data
         self._socket.sendto(self.message.tobytes(), self.IP_addr)
 
+
+class TCPcommandSocket(object):
+        def __init__(self,local_addr,remote_port):
+            self.local_addr =local_addr
+            self.remote_port = remote_port
+            self.remote_addr = (self.local_addr,self.remote_port)
+
+        def connect_host(self):
+            print("command tcp connect");
+            connect_thread = threading.Thread(target=self.connect_thread_function,args=())
+            
+            connect_thread.start()
+
+
+        def connect_thread_function(self):
+            self.send_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.send_sock.bind((self.remote_addr))
+            self.data=None
+            self.send_sock.listen(1)
+            self.client_socket,addr =self.send_sock.accept()
+            while True :
+                self.data=  self.client_socket.recv(1024)
+                if not self.data :
+                    pass
+                else :
+                    self.data=str(data.decode("utf-8"))
+
+        def CleanUP(self):
+            self.send_sock.close()
+        def send_board_command(self,boardcommand=board_command.INIT):
+
+            self.client_socket.send((str(boardcommand.value)).encode("utf-8"))
+            try :
+                return_value=int(self.data)
+                return board_command(return_value)                                                   
+            except :
+                print(self.data)
+                return None
+
 class NAAL_UDPnetwork(object):
     #int(np.random.uniform(low=20000, high=65535))
     #host_IP or remote=(config_FPGA.config_parser('host', 'ip'),udp_port)
-    def __init__(self, host_IP,remote_IP,in_demesion,out_demension):
+    def __init__(self, host_IP,remote_IP,tcp_port,in_demesion,out_demension):
         self.host_IP=host_IP
         self.remote_IP=remote_IP
+        self.currcommand=board_command.INIT
+        self.tcp_addr =TCPcommandSocket(self.host_IP[0],tcp_port)
+        self.tcp_addr.connect_host()
         #command [0] step[1]
         self.in_demesion=in_demesion
         self.out_demension=out_demension
@@ -91,53 +138,60 @@ class NAAL_UDPnetwork(object):
         for i in range(0,self.in_demesion):
            initarr.append(0.0)
         tuple(initarr)
+        
         self.send.send(0,initarr,board_command.START)
-        self.send.set_command(board_command.PROCEEDING)
+        self.send.set_command(board_command.START)
+        self.recv.recv()
+        print("host Init  out_value: ")
+        print(self.recv.message);    
+
+        self.currcommand =board_command.PAUSE
+       
+
+
+    def send_boardcommand(self,boardcommand=board_command.INIT):
+        #동기화문제로 정상작동 x 수정하거나 주석삭제
+        temp =self.tcp_addr.send_board_command(boardcommand)
+       # if temp == None :
+       ##     return
+       # self.currcommand=temp
+        self.currcommand=boardcommand
+        
+    def step_call(self,vector):
+
+        if self.currcommand is board_command.START :
+            self.send.send(self.dt,vector)
+            temp_dt =self.send.dt
+        elif self.currcommand is board_command.PAUSE:
+            #동기화문제 보내야하나 말아야하나 리얼타임 dt기준으로 하면 살리고 나서 보드에서 쓸모없는값을 전송 아니라면 그냥 return 
+            #self.send.send(self.dt,vector,board_command.PAUSE)
+            return
+        elif self.currcommand is board_command.STOP:
+            self.send.closed
+            self.recv.closed
+            self.tcp_addr.CleanUP()
+
+        self.recv.recv()
+        ##if self.recv.dt == self.dt:
+        self.recv.set_command(board_command.START)
+        self.send.set_dt(self.recv.dt)
+        self.recv.set_dt(self.recv.dt)
+
+        print(self.recv.message)           
+
+
+
+ 
+
+            
+
+
+
         
 
 
-    def step_call(self,vector):
-       
-        if self.send.command ==board_command.PROCEEDING.value:
-            self.send.send(self.dt,vector)
-        elif self.send.command ==board_command.PAUSE.value:
-            self.send.send(self.dt,vector,board_command.PAUSE)
-        elif self.send.command ==board_command.STOP.value:
-            self.send.closed
-            self.recv.closed
+        
 
-        self.recv.recv()
-        if self.recv.dt == self.dt:
-            self.recv.set_command(board_command.PROCEEDING)
-            print(self.recv.message)
 
-        ##중간 보고 0501 dt값의 증가를 구현해야함
-        #self.dt+=0.001
-
-# test 예제 수행가능함
-#config =config_FPGA.Is_fpgaboard("pynq")
-#print(config_FPGA.config_parser('host', 'ip'))
-#udp_port = int(np.random.uniform(low=20000, high=65535))
-#addd=(config_FPGA.config_parser('host', 'ip'),udp_port)
-#test =NAAL_UDPnetwork(addd,addd,10)
-#initarr=[0,0]
-## 0 커맨드 1 step
-#for i in range(0,2):
-#    initarr.append(1.4)
-#test.step_call(i)
-
-fpga_name= "pynq"
-in_dimension =4
-out_dimensions=2
-learning_rate=0.01
-##
-#host_init(fpga_name,self.in_dimension+self.out_dimensions,self.out_dimensions,self.learning_rate,socket_args)
-#test=host_init(fpga_name,in_dimension,out_dimensions)
-#test.build_pes_network("fpen_args_mnist.npz")
-#test.connect()
-#config =config_FPGA.Is_fpgaboard("pynq")
-#print(config_FPGA.config_parser('host', 'ip'))
-#udp_port = int(8080)
-#addr=(config_FPGA.config_parser('host', 'ip'),udp_port)
-#remote=(config_FPGA.config_parser(fpga_name, 'ip'),udp_port)
-#naaltest =NAAL_UDPnetwork(addr,remote,196,10)
+        
+        
