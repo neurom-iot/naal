@@ -159,7 +159,7 @@ class NAAL_UDPnetwork(object):
         
     def step_call(self,vector):
 
-        if self.currcommand is board_command.START :
+        if self.currcommand.value is board_command.START.value :
             self.send.send(self.dt,vector)
             temp_dt =self.send.dt
         elif self.currcommand is board_command.PAUSE:
@@ -171,13 +171,15 @@ class NAAL_UDPnetwork(object):
             self.recv.closed
             self.tcp_addr.CleanUP()
 
+            
+
         self.recv.recv()
         ##if self.recv.dt == self.dt:
         self.recv.set_command(board_command.START)
         self.send.set_dt(self.recv.dt)
         self.recv.set_dt(self.recv.dt)
 
-        print(self.recv.message)           
+        return (self.recv.message)           
 
 
 

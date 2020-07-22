@@ -1,24 +1,31 @@
- [host]
- ip = 192.168.1.30
- npz_file_path = fpen_args.npz
- board_connect_timeout = 5
- [pynq]
- ip = 192.168.1.65
- ssh_port = 22
- ssh_user = xilinx
- ssh_pwd = xilinx
- # Refer to the online documentation for SSH key configuration options
- test_script = /opt/NAAL-pynq_v0.2/NAAL_pynq/test2.py
- NAAL_script =/opt/NAAL-pynq_v0.2/NAAL_pynq/pes_network2.py
- NAAL_tmp = /home/xilinx/temp
- tcp_port = 8585
- udp_port = 8080
+[host]
+ip = 192.168.1.30
+npz_file_path = fpen_args.npz
+board_connect_timeout = 5
+pynq = True
+de1 = True
+loihi = False
+[pynq]
+ip = 192.168.1.65
+ssh_port = 22
+ssh_user = xilinx
+ssh_pwd = xilinx
+# Refer to the online documentation for SSH key configuration options
+test_script = /opt/NAAL-pynq_v0.2/NAAL_pynq/test2.py
+NAAL_script =/opt/NAAL-pynq_v0.2/NAAL_pynq/pes_network2.py
+NAAL_tmp = /home/xilinx/temp
+tcp_port = 8585
+udp_port= 8080
+Allowable_parameters = 32760
 [de1]
-ip = 203.253.25.201
+ip = 192.168.1.203
 ssh_port = 22
 ssh_user = root
-ssh_pwd = oslab8864
-# # Refer to the online documentation for SSH key configuration options
-remote_script = /opt/nengo-de1/nengo_de1/single_pes_net.py
-remote_tmp = /opt/nengo-de1/params
+ssh_pwd = 
+# # Refer to the online documentation for SSH key configuration optionscd 
+#remote_script = /opt/NAAL-fpga/NAAL_de1/single_pes_net.py
+NAAL_script = /opt/NAAL-fpga/NAAL_de1/single_pes_net.py
+NAAL_tmp = /opt/NAAL-fpga/params
 udp_port = 8080
+tcp_port = 8585
+Allowable_parameters = 16000
