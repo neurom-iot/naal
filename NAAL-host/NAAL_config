@@ -1,31 +1,35 @@
 [host]
 ip = 192.168.1.30
-npz_file_path = fpen_args.npz
 board_connect_timeout = 5
-pynq = True
-de1 = True
-loihi = False
+
 [pynq]
-ip = 192.168.1.65
+ip = 192.168.1.160
 ssh_port = 22
 ssh_user = xilinx
 ssh_pwd = xilinx
-# Refer to the online documentation for SSH key configuration options
 test_script = /opt/NAAL-pynq_v0.2/NAAL_pynq/test2.py
-NAAL_script =/opt/NAAL-pynq_v0.2/NAAL_pynq/pes_network2.py
-NAAL_tmp = /home/xilinx/temp
+naal_script = /opt/NAAL-pynq_v0.2/NAAL_pynq/pes_network2.py
+naal_tmp = /home/xilinx/temp
 tcp_port = 8585
-udp_port= 8080
-Allowable_parameters = 32760
+udp_port = 8080
+minmum_step_time = 0.002
+allowable_parameters = 32760
+executiontime = 0.0020449161529541016
+errorrate = 0.1
+expectedexecutiontime = 0.0
+
 [de1]
 ip = 192.168.1.203
 ssh_port = 22
 ssh_user = root
 ssh_pwd = 
-# # Refer to the online documentation for SSH key configuration optionscd 
-#remote_script = /opt/NAAL-fpga/NAAL_de1/single_pes_net.py
-NAAL_script = /opt/NAAL-fpga/NAAL_de1/single_pes_net.py
-NAAL_tmp = /opt/NAAL-fpga/params
+naal_script = /opt/NAAL-fpga/NAAL_de1/single_pes_net.py
+naal_tmp = /opt/NAAL-fpga/params
 udp_port = 8080
 tcp_port = 8585
-Allowable_parameters = 16000
+minmum_step_time = 0.003
+allowable_parameters = 16000
+executiontime = 0.002
+errorrate = 0.1
+expectedexecutiontime = 0.0
+
