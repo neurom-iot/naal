@@ -37,8 +37,6 @@ FPGA_CONFIG_FILES = [fpga_config['NAAL'],
                      fpga_config['project']]
 
 
-
-
 def Is_fpgaboard(fgpaboad_name):
     try :
 
@@ -49,7 +47,14 @@ def Is_fpgaboard(fgpaboad_name):
         print('config_FPGA config error',ex)
         exit()
     return fpga_config
-
+def config_parser_board(key,value):
+    config = configparser.ConfigParser()
+    config.read(FPGA_CONFIG_FILES[3])
+    try :
+        key_config = config[key]
+    except Exception as ex:
+        return False
+    return True
 
 def config_parser(key,value):
     config = configparser.ConfigParser()
@@ -60,6 +65,21 @@ def config_parser(key,value):
         print('config_FPGA config error',ex)
         exit()
     return key_config[value]
+
+# config 파일 읽어와 key, value 에 해당하는 영역에 insert_value 값을 넣음
+def set_config(key,value,insert_value):
+    config = configparser.ConfigParser()
+    config.read(FPGA_CONFIG_FILES[3])
+    try :
+        key_config = config[key]
+    except Exception as ex:
+        print('config_FPGA config error',ex)
+        exit()
+
+    key_config[value]= str(insert_value)
+    with open(FPGA_CONFIG_FILES[3],'w') as f:
+        config.write(f)
+
 
 
     
