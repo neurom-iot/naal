@@ -144,7 +144,8 @@ class NAAL_UDPnetwork(object):
         self.recv.recv()
         print("host Init  out_value: ")
         print(self.recv.message);    
-
+        self.execution_time=self.recv.message[1] 
+        print("execution_time  out_value: "+str(self.execution_time))
         self.currcommand =board_command.PAUSE
        
 
