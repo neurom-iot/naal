@@ -22,13 +22,12 @@ import atexit
 
 
 class host_init(object):
-    def __init__(self, fpga_name, n_neurons, dimensions, learning_rate=0.01, socket_args={}):
+    def __init__(self, fpga_name, n_neurons, dimensions,params_path, learning_rate=0.01, socket_args={}):
 
-        fpga_name=self.__sellect_board(fpga_name,0)
-
+        fpga_name=self.__select_board(fpga_name,params_path)
 
         self.config =config_FPGA.Is_fpgaboard(fpga_name)
-        self.fpga_name=fpga_name 
+        self.fpga_name=fpga_name
         self.tcp_port =int(config_FPGA.config_parser(self.fpga_name, 'tcp_port'))
         self.udp_port =int(config_FPGA.config_parser(self.fpga_name, 'udp_port'))
         self.tcp_socket=None
@@ -50,33 +49,98 @@ class host_init(object):
 
         self.learning_rate =learning_rate;
         self.udp_port =8080 #int(np.random.uniform(low=20000, high=65535))
-
         
         socket_kwargs = dict(socket_args)
         socket_kwargs.setdefault('recv_timeout', 0.1)
 
-        
         #self.udp_socket = sockets.UDPsendreceive_socket(
         #    listen_addr=(config_FPGA.config_parser('host', 'ip'), self.udp_port),
         #    remote_addr=(config_FPGA.config_parser(fpga_name, 'ip'), self.udp_port),**socket_kwargs, ignore_timestamp=True)
-    
-    def __sellect_board(self,fpga_name,parm):
-        de1=(config_FPGA.config_parser('host', 'de1'))
-        print("de1 connection ={}".format(de1))
-        pynq=(config_FPGA.config_parser('host', 'pynq'))
-        print("pynq connection ={}".format(pynq))
-        loihi=(config_FPGA.config_parser('host', 'loihi'))
-        print("loihi connection ={}".format(loihi))
+    def CheckexecutionTime(self):
+        i=0
+       # 192.168.1.66
+        neuron_map={}
+        while True:
+            if i ==0 :
+                if (config_FPGA.config_parser('de1_1', 'ip')) ==True:
+                    neuron_map['de1']=0
+                if (config_FPGA.config_parser('host', 'de1')) ==True:
+                    neuron_map['pynq']=0
+                if (config_FPGA.config_parser('host', 'de1')) ==True:
+                    neuron_map['loihi']=0
+                continue
+
+            #de1='de1_'+i
+            #pynq='pynq_'+i
+            #loihi='loihi_'+i
+            #checkpass=False 
+            #if (config_FPGA.config_parser('host', de1)) ==True:
+            #    neuron_map['de1']=0
+            #    checkpass=True
+            #if (config_FPGA.config_parser('host', pynq)) ==True:
+            #    neuron_map['pynq']=0
+            #    checkpass=True
+            #if (config_FPGA.config_parser('host', loihi)) == True:
+            #    neuron_map['loihi']=0
+            #    checkpass=True
+            #if checkpass ==False :
+            #    break
+            #i=i+1
+
+    def set_excutintime(self,executiontime):
+        config_FPGA.set_config(self.fpga_name,'executiontime',executiontime);
+
+
+    def __select_board(self,fpga_name,params_path, error_Mode=False,minmum_step_time = 0.003):
+        ##params data 
+        self.arg_data_file =params_path
+   
+        #de1=(config_FPGA.config_parser_board('de1_1', 'ip'))
+        #print("de1 connection ={}".format(de1))
+        #pynq=(config_FPGA.config_parser_board('host', 'pynq'))
+        #print("pynq connection ={}".format(pynq))
+        #loihi=(config_FPGA.config_parser_board('host', 'loihi'))
+        #print("loihi connection ={}".format(loihi))
+
+
         if fpga_name == "auto":
-           
-            #print("It is not implemented  auto --> pynq")
-            print("Auto sellect board =PYNQ");
-            return "pynq"
-        if fpga_name =="de1" and de1 =="True":
+            arg_data = np.load(self.arg_data_file, encoding='latin1',allow_pickle=True)
+            sim_args = arg_data['sim_args'].item()
+            ens_args = arg_data['ens_args'].item()
+            conn_args = arg_data['conn_args'].item()
+            
+            # Various model parameters
+            self.dt = sim_args['dt']
+            
+            n_neurons = ens_args['n_neurons']
+            #params in & out dimension 
+            input_dimensions = ens_args['input_dimensions']
+            output_dimensions = ens_args['output_dimensions']
+            neuron_type = ens_args['neuron_type']
+            bias = ens_args['bias']
+            scaled_encoders = ens_args['scaled_encoders']
+            
+            learning_rate = conn_args['learning_rate']
+            weights = conn_args['weights']
+
+            if (n_neurons * max(input_dimensions, output_dimensions) > 32768):
+                raise AttributeError('Maximum supported N * D is 32,768.')
+            if (n_neurons > 16384):
+                raise AttributeError('Maximum supported N is 16,384.')
+            if (max(input_dimensions, output_dimensions) > 1024):
+                raise AttributeError('Maximum supported D is 1024.')
+
+            if (n_neurons * max(input_dimensions, output_dimensions) > 16000):
+                return "pynq"
+            elif (n_neurons * max(input_dimensions, output_dimensions) < 16000):
+                    return "de1"
+
+                        
+        if fpga_name =="de1":
             return fpga_name;
-        if fpga_name =="pynq" and pynq =="True":
+        if fpga_name =="pynq":
             return fpga_name
-        if fpga_name =="loihi" and loihi =="True":
+        if fpga_name =="loihi":
             return fpga_name
         
         print("not exist board");
@@ -84,7 +148,27 @@ class host_init(object):
 
                 
 
+        # def Choosing_Neuromorphic(self,Choosing_Mode=None,minmum_step_time = 0.003):
+        #        self.arg_data_file =npz_filename
+        #self.mode =None;
+        #self.minmum_step_time=None
+        #if Choosing_Mode =None:
+        #    self.mode="RANDOM";
+        #elif Choosing_Mode ="params":
+        #    self.mode=Choosing_Mode
+        #elif Choosing_Mode ="error":
+        #    self.mode=error=Choosing_Mode
+        #    self.minmum_step_time=minmum_step_time
+        #else :
+        #    print ("usage Choosing_Neuromorphic Function")
+        #    print ("None =random choosing, params= refer to parameter, error = refer to parameter and minmum ")
+        #    return;
 
+        #config_FPGA.config_parser('host', 'loihi')
+
+    
+     
+#    def BasedERRORRATE(self,errorrate=0.1,)
 
     @property
     def local_data_filepath(self):
@@ -189,8 +273,6 @@ class host_init(object):
                     print('<%s> %s' % (remote_ip, info_str), flush=True)
             self.ssh_info_str = info_str_list[-1]
             
-    
-             
             if got_error == 2:
                 ssh_channel.close()
                 raise RuntimeError(
@@ -224,8 +306,11 @@ class host_init(object):
             
         self.npz_filename=npz_filename
         self.arg_data_file =npz_filename
-    
 
+
+
+
+   
     def board_command(self, command,reserved):
         #reserved is Not Implemented
         if command.value is (board_command.INIT).value:
