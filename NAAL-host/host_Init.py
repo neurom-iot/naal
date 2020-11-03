@@ -22,8 +22,8 @@ import atexit
 
 
 class host_init(object):
-    def __init__(self, fpga_name, n_neurons, dimensions,params_path, learning_rate=0.01, socket_args={}):
-
+    def __init__(self, fpga_name, n_neurons, dimensions,params_path, learning_rate=0.01,error_rate=False, socket_args={}):
+        self.exist_map={}
         fpga_name=self.__select_board(fpga_name,params_path)
 
         self.config =config_FPGA.Is_fpgaboard(fpga_name)
@@ -86,21 +86,44 @@ class host_init(object):
             #if checkpass ==False :
             #    break
             #i=i+1
+    #현재 미구현상태로 ET만
+    def selecting_minimumEET_NA(self):
+        selectedNA=""
+        selectedNA_EET=1.0
+        min=1.0
+        for NA in self.exist_map:
+            #executiontime ->EET 로 변경해야함 현재 EET 미구현
+            min=float(config_FPGA.config_parser(NA,"executiontime"))
+            if(selectedNA_EET>min ):
+                selectedNA=NA
+                selectedNA_EET=min
+        if selectedNA=="" :
+            print("Error SelectedNA Not exist")
+            exit()
+        
+        return selectedNA
+
 
     def set_excutintime(self,executiontime):
         config_FPGA.set_config(self.fpga_name,'executiontime',executiontime);
 
+    #만약 에러가 발생한다면 호출
+    #error 가발생했을 경우 (msg[1]= 5인경우)
+    #기존에 적힌 errorrate를 읽은후 1/2 //임시 오류율임
+    ##이단계일때 EET를 다시 계산하도록 구현
+    def set_errorrate(self):
+        error=float(config_FPGA.config_parser(NA,"errorrate"))
+        config_FPGA.set_config(self.fpga_name,'errorrate',error/2.0);
+        
+    
+    def EET_culculration(self, self.fpga_name):
 
+        
     def __select_board(self,fpga_name,params_path, error_Mode=False,minmum_step_time = 0.003):
-        ##params data 
+        de1_check=False
+        pynq_check=False
         self.arg_data_file =params_path
    
-        #de1=(config_FPGA.config_parser_board('de1_1', 'ip'))
-        #print("de1 connection ={}".format(de1))
-        #pynq=(config_FPGA.config_parser_board('host', 'pynq'))
-        #print("pynq connection ={}".format(pynq))
-        #loihi=(config_FPGA.config_parser_board('host', 'loihi'))
-        #print("loihi connection ={}".format(loihi))
 
 
         if fpga_name == "auto":
@@ -131,44 +154,51 @@ class host_init(object):
                 raise AttributeError('Maximum supported D is 1024.')
 
             if (n_neurons * max(input_dimensions, output_dimensions) > 16000):
-                return "pynq"
+                pynq_check =True
             elif (n_neurons * max(input_dimensions, output_dimensions) < 16000):
-                    return "de1"
+                de1_check= True
+                pynq_check =True
 
-                        
-        if fpga_name =="de1":
-            return fpga_name;
-        if fpga_name =="pynq":
-            return fpga_name
-        if fpga_name =="loihi":
-            return fpga_name
+            if pynq_check:
+                if self.config_listcheck("pynq")==False:
+                    print("Not pynq board configuration")
+            if de1_check:
+                if self.config_listcheck("de1")==False:
+                    print("Not pynq board configuration")
+            if len(self.exist_map) ==0:
+                print("Error : not exist NA ")
+                exit()
+            return self.selecting_minimumEET_NA()
+
+       
+
         
+
+        if fpga_name =="pynq"or pynq_check:
+            return fpga_name                       
+        if fpga_name =="de1" or de1_check:
+            return fpga_name;
+        #not implement
+        if fpga_name =="loihi":
+            return fpga_name  
         print("not exist board");
         exit();
 
-                
 
-        # def Choosing_Neuromorphic(self,Choosing_Mode=None,minmum_step_time = 0.003):
-        #        self.arg_data_file =npz_filename
-        #self.mode =None;
-        #self.minmum_step_time=None
-        #if Choosing_Mode =None:
-        #    self.mode="RANDOM";
-        #elif Choosing_Mode ="params":
-        #    self.mode=Choosing_Mode
-        #elif Choosing_Mode ="error":
-        #    self.mode=error=Choosing_Mode
-        #    self.minmum_step_time=minmum_step_time
-        #else :
-        #    print ("usage Choosing_Neuromorphic Function")
-        #    print ("None =random choosing, params= refer to parameter, error = refer to parameter and minmum ")
-        #    return;
+    def config_listcheck(self,fpga_name):
+        exist_name=fpga_name
+        i=0
+        while True :
+            i=i+1
+            if config_FPGA.config_parser_board(exist_name,"ip"):
+                self.exist_map[exist_name]=config_FPGA.config_parser(exist_name,"executiontime")
+            else :
+                break;
+            exist_name=exist_name+"_"+str(i)
 
-        #config_FPGA.config_parser('host', 'loihi')
-
-    
-     
-#    def BasedERRORRATE(self,errorrate=0.1,)
+        if i ==0:
+            return False
+        return True
 
     @property
     def local_data_filepath(self):
@@ -230,8 +260,7 @@ class host_init(object):
     
     
         ssh_channel.send(send_str)
-    
-    
+   
         got_error = 0
         error_strs = []
     
@@ -307,10 +336,6 @@ class host_init(object):
         self.npz_filename=npz_filename
         self.arg_data_file =npz_filename
 
-
-
-
-   
     def board_command(self, command,reserved):
         #reserved is Not Implemented
         if command.value is (board_command.INIT).value:
@@ -325,15 +350,12 @@ class host_init(object):
             arg_data=np.load(filepath)
             print("============npz")                                                                                                               
 
-
         sim_args = arg_data['sim_args'].item()
         ens_args = arg_data['ens_args'].item()
         conn_args = arg_data['conn_args'].item()
 
-
         # Various model parameters
         self.dt = sim_args['dt']
-
         n_neurons = ens_args['n_neurons']
         self.input_dimensions = ens_args['input_dimensions']
         self.output_dimensions = ens_args['output_dimensions']
