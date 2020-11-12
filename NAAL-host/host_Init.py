@@ -47,6 +47,10 @@ class host_init(object):
             'RectifiedLinear','SpikingRectifiedLinear'
             }
 
+        self.EET_culculration()
+        #print("test용 삭제");
+        #exit(0);
+
         self.learning_rate =learning_rate;
         self.udp_port =8080 #int(np.random.uniform(low=20000, high=65535))
         
@@ -116,7 +120,22 @@ class host_init(object):
         config_FPGA.set_config(self.fpga_name,'errorrate',error/2.0);
         
     
-    def EET_culculration(self, self.fpga_name):
+    def EET_culculration(self):
+        p=float(config_FPGA.config_parser(self.fpga_name,"errorrate"))
+        p=1-p
+        if p >1 :
+            print("EET_culculration() error : p value is in correct p ="+str(p))
+        a=float(config_FPGA.config_parser(self.fpga_name,"executiontime"))
+        n=int(config_FPGA.config_parser(self.fpga_name,"n_step"))
+        temp =0.0;
+        for k in range(0,n+1):
+            temp+=((k+1)*((1-p)**k)*p)
+            print("temp ="+str(temp)+"k="+str(k))
+
+        print("a="+str(a)+"n="+str(n))
+        EET_vaule =(a/n)*temp
+        print("EET_value ="+str(EET_vaule))
+
 
         
     def __select_board(self,fpga_name,params_path, error_Mode=False,minmum_step_time = 0.003):
@@ -170,15 +189,12 @@ class host_init(object):
                 exit()
             return self.selecting_minimumEET_NA()
 
-       
-
-        
-
         if fpga_name =="pynq"or pynq_check:
             return fpga_name                       
         if fpga_name =="de1" or de1_check:
             return fpga_name;
         #not implement
+
         if fpga_name =="loihi":
             return fpga_name  
         print("not exist board");
