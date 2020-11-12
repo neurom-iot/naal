@@ -84,7 +84,7 @@ class pes_network(object):
 if __name__ =="__main__":
     test =pes_network(196,10,fpga_name ="auto") 
     test.NAAL_command()
-    #test.NAAL_command(board_command.START)
+    test.NAAL_command(board_command.START)
     arr=[-1.   ,      -1.   ,      -1.  ,       -1.   ,      -1.,
      -1.         ,-1.        , -1.        , -1.        , -1.        , -1.,
      -1.         ,-1.        , -1.        , -0.99993747, -1.00001907, -1.00018394,
