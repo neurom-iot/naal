@@ -122,10 +122,12 @@ class host_init(object):
     
     def EET_culculration(self):
         p=float(config_FPGA.config_parser(self.fpga_name,"errorrate"))
+        
         p=1-p
         if p >1 :
             print("EET_culculration() error : p value is in correct p ="+str(p))
         a=float(config_FPGA.config_parser(self.fpga_name,"executiontime"))
+        a=a*30
         n=int(config_FPGA.config_parser(self.fpga_name,"n_step"))
         temp =0.0;
         for k in range(0,n+1):
@@ -135,9 +137,10 @@ class host_init(object):
         print("a="+str(a)+"n="+str(n))
         EET_vaule =(a/n)*temp
         print("EET_value ="+str(EET_vaule))
-        if (n != 1):
+        if (n > 1 ):
+            EET_vaule+=a
         #추정 시간이라 x30 나중에 수정
-        config_FPGA.set_config(self.fpga_name,'EET',EET_vaule*30);
+        config_FPGA.set_config(self.fpga_name,'EET',EET_vaule);
 
 
 
