@@ -135,6 +135,10 @@ class host_init(object):
         print("a="+str(a)+"n="+str(n))
         EET_vaule =(a/n)*temp
         print("EET_value ="+str(EET_vaule))
+        if (n != 1):
+        #추정 시간이라 x30 나중에 수정
+        config_FPGA.set_config(self.fpga_name,'EET',EET_vaule*30);
+
 
 
         
@@ -207,7 +211,7 @@ class host_init(object):
         while True :
             i=i+1
             if config_FPGA.config_parser_board(exist_name,"ip"):
-                self.exist_map[exist_name]=config_FPGA.config_parser(exist_name,"executiontime")
+                self.exist_map[exist_name]=config_FPGA.config_parser(exist_name,"EET")
             else :
                 break;
             exist_name=exist_name+"_"+str(i)
