@@ -113,8 +113,6 @@ class TCPcommandSocket(object):
                 return None
 
 class NAAL_UDPnetwork(object):
-    #int(np.random.uniform(low=20000, high=65535))
-    #host_IP or remote=(config_FPGA.config_parser('host', 'ip'),udp_port)
     def __init__(self, host_IP,remote_IP,tcp_port,in_demesion,out_demension):
         self.host_IP=host_IP
         self.remote_IP=remote_IP
