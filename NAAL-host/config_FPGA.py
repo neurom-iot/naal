@@ -66,7 +66,6 @@ def config_parser(key,value):
         exit()
     return key_config[value]
 
-# config 파일 읽어와 key, value 에 해당하는 영역에 insert_value 값을 넣음
 def set_config(key,value,insert_value):
     config = configparser.ConfigParser()
     config.read(FPGA_CONFIG_FILES[3])
