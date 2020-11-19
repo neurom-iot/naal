@@ -164,7 +164,7 @@ class NAAL_UDPnetwork(object):
             self.send.send(self.dt,vector)
             temp_dt =self.send.dt
         elif self.currcommand is board_command.PAUSE:
-            #동기화문제 보내야하나 말아야하나 리얼타임 dt기준으로 하면 살리고 나서 보드에서 쓸모없는값을 전송 아니라면 그냥 return 
+  
             #self.send.send(self.dt,vector,board_command.PAUSE)
             return
         elif self.currcommand is board_command.STOP:
