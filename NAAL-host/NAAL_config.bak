@@ -12,22 +12,7 @@ naal_tmp = /home/xilinx/temp
 tcp_port = 8585
 udp_port = 8080
 allowable_parameters = 32760
-executiontime = 0.0019724369049072266
-errorrate = 0.01
-eet = 0.07225428824816947
-n_step = 2
-
-[pynq1]
-ip = 192.168.1.65
-ssh_port = 22
-ssh_user = xilinx
-ssh_pwd = xilinx
-naal_script = /opt/NAAL-pynq/NAAL_pynq/pes_network2.py
-naal_tmp = /home/xilinx/temp
-tcp_port = 8585
-udp_port = 8080
-allowable_parameters = 32760
-executiontime = 0.002124786376953125
+executiontime = 0.002057313919067383
 errorrate = 0.01
 eet = 0.07294180073263325
 n_step = 2
@@ -43,8 +28,8 @@ udp_port = 8080
 tcp_port = 8585
 minmum_step_time = 0.00340523
 allowable_parameters = 16000
-executiontime = 0.0
+executiontime = 0.0022
 errorrate = 0.1
-eet = 0.0
+eet = 0.07647618961714286
 n_step = 1
 

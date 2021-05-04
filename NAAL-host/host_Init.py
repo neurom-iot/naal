@@ -25,10 +25,11 @@ class host_init(object):
     def __init__(self, fpga_name, n_neurons, dimensions,params_path, learning_rate=0.01,error_rate=False, socket_args={}):
         self.exist_map={}
         fpga_name=self.__select_board(fpga_name,params_path)
-
+        #fpga_name='de1'
+        #print("selected board : " + str(fpga_name))
         self.config =config_FPGA.Is_fpgaboard(fpga_name)
         self.fpga_name=fpga_name
-        self.tcp_port =int(config_FPGA.config_parser(self.fpga_name, 'tcp_port'))
+        self.tcp_port = random.randint(int(config_FPGA.config_parser(self.fpga_name, 'tcp_port')), int(config_FPGA.config_parser(self.fpga_name, 'tcp_port'))+ 100)
         self.udp_port =int(config_FPGA.config_parser(self.fpga_name, 'udp_port'))
         self.tcp_socket=None
         self.udp_socket=None
@@ -47,7 +48,13 @@ class host_init(object):
             'RectifiedLinear','SpikingRectifiedLinear'
             }
 
-        self.EET_culculration()
+        self.EET_culculration(1)
+        self.EET_culculration(2)
+        self.EET_culculration(3)
+        self.EET_culculration(4)
+        self.EET_culculration(5)
+        self.EET_culculration(6)
+        self.EET_culculration(7)
         #print("test용 삭제");
         #exit(0);
 
@@ -104,7 +111,8 @@ class host_init(object):
         if selectedNA=="" :
             print("Error SelectedNA Not exist")
             exit()
-        
+       
+        print("selectedNA %s" % selectedNA)
         return selectedNA
 
 
@@ -120,26 +128,29 @@ class host_init(object):
         config_FPGA.set_config(self.fpga_name,'errorrate',error/2.0);
         
     
-    def EET_culculration(self):
+    def EET_culculration(self,n=0):
         p=float(config_FPGA.config_parser(self.fpga_name,"errorrate"))
-        
+        #print("p : " + str(p))
         p=1-p
         if p >1 :
-            print("EET_culculration() error : p value is in correct p ="+str(p))
+           print("EET_culculration() error : p value is in correct p ="+str(p))
         a=float(config_FPGA.config_parser(self.fpga_name,"executiontime"))
         a=a*30
-        n=int(config_FPGA.config_parser(self.fpga_name,"n_step"))
+        if (n==0):
+            n=int(config_FPGA.config_parser(self.fpga_name,"n_step"))
         temp =0.0;
         for k in range(0,n+1):
             temp+=((k+1)*((1-p)**k)*p)
-            print("temp ="+str(temp)+"k="+str(k))
+            #print("temp ="+str(temp)+"k="+str(k))
 
-        print("a="+str(a)+"n="+str(n))
+        #print("a="+str(a)+"n="+str(n))
         EET_vaule =(a/n)*temp
         print("EET_value ="+str(EET_vaule))
         if (n > 1 ):
             EET_vaule+=a
         #추정 시간이라 x30 나중에 수정
+
+        print("EET:"+str(EET_vaule))
         config_FPGA.set_config(self.fpga_name,'EET',EET_vaule);
 
 
@@ -150,8 +161,6 @@ class host_init(object):
         pynq_check=False
         self.arg_data_file =params_path
    
-
-
         if fpga_name == "auto":
             arg_data = np.load(self.arg_data_file, encoding='latin1',allow_pickle=True)
             sim_args = arg_data['sim_args'].item()
@@ -194,6 +203,7 @@ class host_init(object):
             if len(self.exist_map) ==0:
                 print("Error : not exist NA ")
                 exit()
+
             return self.selecting_minimumEET_NA()
 
         if fpga_name =="pynq"or pynq_check:
@@ -246,22 +256,28 @@ class host_init(object):
         ssh_port = self.config['ssh_port']
         ssh_user = self.config['ssh_user']
         ssh_pwd = self.config['ssh_pwd']
-        self.ssh_client.connect(remote_ip, port=ssh_port,
-        username=ssh_user, password=ssh_pwd)
-    
-                                        
+        
+        if self.fpga_name is 'pynq':
+            self.ssh_client.connect(remote_ip, port=ssh_port,
+            username=ssh_user, password=ssh_pwd)
+  
+  #lsy
+        if self.fpga_name is 'de1':
+            #privatekeyfile = os.path.expanduser('~/.ssh/id_rsa')
+            privatekeyfile = os.path.expanduser('/home/pi/.ssh/id_rsa')
+            mykey = paramiko.RSAKey.from_private_key_file(privatekeyfile, "oslab")
+            self.ssh_client.connect(remote_ip, username=ssh_user, pkey = mykey)
+  #lsy 
+
         #리눅스에서 해당 명령어 안됨 수정요망 if문이안됨
         #리눅스에선 send _str = connect 로 수정    if문삭제하고          
         send_str =self.ssh_command
-        if ssh_pwd is not None:
-            self.ssh_client.connect(remote_ip, port=ssh_port,
-                                    username=ssh_user, password=ssh_pwd)
-        else:
-            self.ssh_client.connect(remote_ip, port=ssh_port,
-                                    username=ssh_user)
-    
-        print("send command ");
-        print("<%s> Sending cmd to fpga board: \n%s" % (self.config['ip'],send_str), flush=True)
+#        if ssh_pwd is not None:
+#            self.ssh_client.connect(remote_ip, port=ssh_port,
+#                                    username=ssh_user, password=ssh_pwd)
+#        else:
+#            self.ssh_client.connect(remote_ip, port=ssh_port,
+#                                    username=ssh_user)
     
     
         remote_data_filepath = \
@@ -271,9 +287,10 @@ class host_init(object):
         print("remote_data_file path"+remote_data_filepath)
         print("npz_file_path "+(self.local_data_filepath))
     
-        if not os.path.exists(self.local_data_filepath):
-            print("none npz file exit")
-            exit()
+        #if not os.path.exists(self.local_data_filepath):
+        #    print("none npz file exit")
+        #    exit()
+
         print("local data"+self.local_data_filepath)
         ssh_channel = self.ssh_client.invoke_shell()
         if ssh_user != 'root':
@@ -344,6 +361,8 @@ class host_init(object):
        # self.tcp_socket.connect_host()
        
         self.udp_socket=NAAL_UDPnetwork(self.host_addr,self.remote_addr,self.tcp_port,self.in_dimensions,self.out_dimensions)
+
+        
 
     def ssh_output_string(self, data):
         str_data = data.decode('latin1').replace('\r\n', '\r')

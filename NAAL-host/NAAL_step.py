@@ -7,7 +7,9 @@ import numpy as np
 from enum import Enum
 import time
 import config_FPGA
-
+import atexit
+import random
+import time
 
 class board_command(Enum):
     INIT=0
@@ -30,6 +32,7 @@ class naal_socket(object):
         self.message[0] = np.nan
         self._socket = None
         self.open()
+        atexit.register(self.CleanUP)
 
     def __call__(self):
         if self.type.value == socket_type.RECV.value :
@@ -65,6 +68,10 @@ class naal_socket(object):
             return
     def recv(self):
         self._socket.recv_into(self.message.data)
+    
+    def CleanUP(self):
+            """self._socket.close()"""
+            self._socket.shutdown(SHUT_RDWR)
 
     def send(self,dt, vector_data,command=board_command.START):
 
@@ -79,7 +86,7 @@ class TCPcommandSocket(object):
             self.local_addr =local_addr
             self.remote_port = remote_port
             self.remote_addr = (self.local_addr,self.remote_port)
-
+            atexit.register(self.CleanUP)
         def connect_host(self):
             print("command tcp connect");
             connect_thread = threading.Thread(target=self.connect_thread_function,args=())
@@ -101,6 +108,7 @@ class TCPcommandSocket(object):
                     self.data=str(data.decode("utf-8"))
 
         def CleanUP(self):
+            """self.send_sock.close()"""
             self.send_sock.close()
         def send_board_command(self,boardcommand=board_command.INIT):
 
@@ -129,6 +137,7 @@ class NAAL_UDPnetwork(object):
         self.send()
         self.recv.set_command(board_command.INIT)
         self.recv()
+        print("test\n")#lsy
         self.recv.recv()
         print("host recv :")
         print(self.recv.message);
@@ -159,16 +168,20 @@ class NAAL_UDPnetwork(object):
     def step_call(self,vector):
 
         if self.currcommand.value is board_command.START.value :
+            print("==========================board.START=====================\n")
             self.send.send(self.dt,vector)
             temp_dt =self.send.dt
+            #print("==========================board.START=====================\n")
         elif self.currcommand is board_command.PAUSE:
   
             #self.send.send(self.dt,vector,board_command.PAUSE)
+            print("==========================board.PAUSE=====================\n")
             return
         elif self.currcommand is board_command.STOP:
             self.send.closed
             self.recv.closed
             self.tcp_addr.CleanUP()
+            print("==========================board.STOP=====================\n")
 
             
 
