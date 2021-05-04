@@ -3,12 +3,14 @@ import sys
 import threading
 import numpy as np
 from enum import Enum
+import time
+
 class board_command(Enum):
     INIT=0
     START=1
-    PROCEEDING=2
-    PAUSE=3
-    STOP=4
+    PAUSE=2
+    STOP=3
+    NONE=4
 class socket_type(Enum):
     SEND=0
     RECV=1
@@ -63,7 +65,7 @@ class naal_socket(object):
     def recv(self):
         self._socket.recv_into(self.message.data)
 
-    def send(self,dt, vector_data,command=board_command.PROCEEDING):
+    def send(self,dt, vector_data,command=board_command.START):
 
         self.message[0] =  command.value
         self.message[1] = dt
@@ -87,7 +89,7 @@ class NAAL_UDPnetwork(object):
            initarr.append(0.0)
         tuple(initarr)
         self.send.send(0,initarr,board_command.START)
-        self.send.set_command(board_command.PROCEEDING)
+        self.send.set_command(board_command.START)
         self.recv.recv()
         print("board recv:")
         print(self.recv.message)
@@ -104,9 +106,11 @@ class NAAL_UDPnetwork(object):
         # self.send.set_command(board_command.PROCEEDING)
         # self.dt=0.0
 
+
+
     def step_call_recv(self,dt):
         self.recv.recv()
-        self.recv.set_command(board_command.PROCEEDING)
+        self.recv.set_command(board_command.START)
         return self.recv.message
 
     def step_call_send(self,dt,vector_data):
@@ -114,9 +118,46 @@ class NAAL_UDPnetwork(object):
 
 
 
+class TCPcommandSocket(object):
+        def __init__(self,local_addr, remote_addr,remote_port,connection_timeout=300.):
+            self.local_addr =local_addr
+            self.remote_addr = remote_addr
+            self.remote_port = remote_port
+            self.connection_timeout = connection_timeout
+            self.sim_status=board_command.INIT
 
         
+        def connect_host(self):
+            print("tcp connect");
+            command=0x00 # connect
+   
+            connect_thread = threading.Thread(target=self.connect_thread_function,args=())
+            connect_thread.start()        
+        
+
+        def connect_thread_function(self):
+            self.send_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.send_sock.connect((self.remote_addr, self.remote_port))
+            print("");
+            print("");
+            self.sim_status=board_command.NONE
+            while True :
+                data=  self.send_sock.recv(1024)
+                if not data :
+                    pass
+                else :
+                    data = data.decode('utf-8')
+                    try : 
+                        return_value=int(data)
+                        self.sim_status=board_command(return_value) 
+                        print("mode change +"+str(self.sim_status));                                                  
+                    except :
+                        print(self.data)
+                        return None
+                        
 
 
-        
-        
+        def CleanUP(self):
+            self.send_sock.close()
+
+            

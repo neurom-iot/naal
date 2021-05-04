@@ -1,0 +1,20 @@
+before_script:
+  - source .ci/conda_setup.sh
+  - source activate de1-docs
+  - pip install --upgrade --no-deps -e .
+  - pip install --upgrade nengo_sphinx_theme sphinx
+
+check-docs:
+  stage: test
+  script:
+    - sphinx-build -b linkcheck -vW docs docs/_build
+
+build-docs:
+  stage: deploy
+  only:
+    - tags
+  script:
+    - sphinx-build -vW docs docs/_build
+    - DATE=$(date '+%Y-%m-%d %T')
+    - ghp-import -m "Last update at $DATE" -b gh-pages docs/_build
+    - git push -fq "https://$GH_TOKEN@github.com/nengo/nengo-pynq.git" gh-pages
