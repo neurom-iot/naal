@@ -1,0 +1,123 @@
+from __future__ import print_function
+import os
+import argparse
+import atexit
+import numpy as np
+
+from nengo_de1.utils.paths import params_path
+from nengo_de1.sockets import UDPSendReceiveSocket
+from nengo_de1.nengo_data import NengoData
+from nengo_de1.pes_driver import PESDriver
+import time
+
+parser = argparse.ArgumentParser(
+    description='Generic script for running the PESEnsembleNetwork on the ' +
+    'FPGA board.')
+
+# Socket communication arguments
+parser.add_argument(
+    '--host_ip', type=str, default='127.0.0.1',
+    help='IP Address of host PC. Used for socket communication between the ' +
+    'nengo models.')
+parser.add_argument(
+    '--remote_ip', type=str, default='127.0.0.1',
+    help='IP Address of this FPGA board. Used for socket communication ' +
+    'between the nengo models.')
+parser.add_argument(
+    '--udp_port', type=int, default=50000,
+    help='Port number to use for the socket communication.')
+parser.add_argument(
+    '--socket_args', type=str, default='{}',
+    help='Additional arguments used when creating the udp socket. Should be ' +
+    'formatted as a dictionary string.')
+
+parser.add_argument(
+    '--arg_data_file', type=str, default=os.path.join(params_path, 'args.npz'),
+    help='Path to parameter arguments (for ensemble, output connection) data' +
+    ' file.')
+
+# Model parameter arguments
+parser.add_argument(
+    '--seed', type=str, default=None,
+    help='Seed to use when creating the nengo model.')
+
+# Parse the arguments
+args = parser.parse_args()
+
+# ----- Create socket for UPD socket communication -----
+# Use the host, client, and port information from the command line arguments
+# N.B. Make the socket blocking so that if no information is obtained from the
+#      host (e.g., when the model is paused in the GUI), the nengo model
+#      waits indefinitely.
+# N.B. The UDP socket gets information as an array, where the first input_dim
+#      dimensions is the input signal to the PESEnsembleNetwork, and the
+#      remaining output_dim dimensions is the error signal to the
+#      PESEnsembleNetwork.
+
+# Load Nengo Data from file
+nengo_data = NengoData(args.arg_data_file)
+
+# UDP socket object
+udp_socket = UDPSendReceiveSocket(
+    remote_addr=(args.host_ip, args.udp_port),
+    listen_addr=(args.remote_ip, args.udp_port),
+    recv_timeout=None, **eval(args.socket_args))
+# UDP step function. Handles sending and receiving data to and from the UDP
+# socket.
+# Note: The socket's input dimension is dimensionality of the sent signal
+#       (i.e., nengo_data.output_dimensions)
+#       Likewise, the socket's output dimension is the dimensionality of the
+#       received signal (i.e., nengo_data.input + output dimensions)
+socket_step = udp_socket.make_step(
+    nengo_data.output_dimensions,
+    nengo_data.input_dimensions + nengo_data.output_dimensions,
+    nengo_data.dt)
+
+# Driver for FPGA interface. Loads up the model parameter arguments from
+# the specified argument data file and sets up the FPGA.
+try:
+    fpga_driver = PESDriver(nengo_data)
+except:
+    # Send a UDP termination packet if an error is encountered
+    socket_step.send(-1, np.zeros((nengo_data.output_dimensions)))
+    raise
+
+
+# Cleanup function
+def cleanup(nengo_data, fpga_driver, socket_step):
+    # Cleanup data files
+    nengo_data.cleanup()
+
+    # Terminate the fpga driver
+    fpga_driver.terminate()
+
+    # Close and cleanup the UDP socket
+    socket_step.close()
+
+# Register the cleanup function with atexit
+atexit.register(cleanup, nengo_data, fpga_driver, socket_step)
+
+# Variables to keep track of current simulation time
+curr_t = 0
+dt = nengo_data.dt
+
+while not fpga_driver.stopped:
+    # Receive values from the socket, and send over any values produced in the
+    # previous "timestep"
+    socket_recv_value = socket_step(curr_t, fpga_driver.output)
+
+    try:
+        # Update the FPGA driver with the received input values.
+        # Note: update_input_error_values function handles splitting up the
+        #       single array into the respective "input" and "error" arrays
+        fpga_driver.update_input_error_values(socket_recv_value)
+
+        # Send the step command to the FPGA
+        output_value = fpga_driver.step()
+    except:
+        # Send a UDP termination packet if an error is encountered
+        socket_step.send(-1, np.zeros((nengo_data.output_dimensions)))
+        raise
+
+    # Update the current timestamp
+    curr_t += dt
