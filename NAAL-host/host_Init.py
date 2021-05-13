@@ -257,7 +257,7 @@ class host_init(object):
         ssh_user = self.config['ssh_user']
         ssh_pwd = self.config['ssh_pwd']
         
-        if self.fpga_name is not 'pynq':
+        if self.fpga_name is 'pynq' or 'de1':
             self.ssh_client.connect(remote_ip, port=ssh_port,
             username=ssh_user, password=ssh_pwd)
  
