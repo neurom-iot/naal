@@ -257,10 +257,11 @@ class host_init(object):
         ssh_user = self.config['ssh_user']
         ssh_pwd = self.config['ssh_pwd']
         
-        if self.fpga_name is 'pynq':
+        if self.fpga_name is not 'pynq':
             self.ssh_client.connect(remote_ip, port=ssh_port,
             username=ssh_user, password=ssh_pwd)
-  
+ 
+        """
   #lsy
         if self.fpga_name is 'de1':
             #privatekeyfile = os.path.expanduser('~/.ssh/id_rsa')
@@ -268,6 +269,7 @@ class host_init(object):
             mykey = paramiko.RSAKey.from_private_key_file(privatekeyfile, "oslab")
             self.ssh_client.connect(remote_ip, username=ssh_user, pkey = mykey)
   #lsy 
+        """
 
         #리눅스에서 해당 명령어 안됨 수정요망 if문이안됨
         #리눅스에선 send _str = connect 로 수정    if문삭제하고          
