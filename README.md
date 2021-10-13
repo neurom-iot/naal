@@ -2,7 +2,13 @@
 - Neuromorphic Architecture Abstraction Layer
 - Especially for Contstrained Hardware such as IoT device
 
-## Supporting Neuromorphic Computing Hardware
+## Supporting IoT Devices
+- Raspberry Pi 3/4
+- LattePanda Alpha 864s
+- NVIDIA Jetson Nano
+- ASUS Tinker board 2
+
+## Supporting Neuromorphic Computing Hardwares
 - ABR FPGA Board (DE1-SoC, PYNQ)
 - Intel Loihi Emulator
 
