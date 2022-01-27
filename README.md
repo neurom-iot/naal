@@ -17,6 +17,7 @@
 - Please read [CONTRIBUTING.md](CONTRIBUTING.md) if you are interested in contributing the project.
 
 ## Contributors
+- [Jiman Hong](http://oslab.ssu.ac.kr/main/)
 - [Junyoung Heo](https://github.com/jyheo)
 - [Bongjae Kim](https://sites.google.com/view/sunmmon-ssrlab/)
 - [Kicheol Park](http://oslab.ssu.ac.kr/main/)
