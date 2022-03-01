@@ -22,5 +22,5 @@
 - [Bongjae Kim](https://sites.google.com/view/sunmmon-ssrlab/)
 - [Kicheol Park](http://oslab.ssu.ac.kr/main/)
 - [Yena Lee](http://oslab.ssu.ac.kr/main/)
-- [Jaeseop Kim](http://oslab.ssu.ac.kr/main/)
 - [Jinsung Cho](https://sites.google.com/view/sunmmon-ssrlab/)
+- [Jaeseop Kim](http://oslab.ssu.ac.kr/main/)
